@@ -218,7 +218,7 @@ pipeline {
     }
 
     // ----------------------------------------
-    // POST PIPELINE
+    // POST PIPELINE - runs after all stages
     // ----------------------------------------
     post {
         success {
