@@ -14,6 +14,9 @@ public class CalculatorMockTest {
     @Mock
     Calculator calculator;
 
+    @Mock
+    CalculationHistoryRepository repository;
+
     @InjectMocks
     CalculatorService calculatorService;
 
