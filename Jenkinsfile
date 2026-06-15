@@ -42,6 +42,7 @@ pipeline {
         // STAGE 2 - ENVIRONMENT SETUP
         // ----------------------------------------
         stage('Environment Setup') {
+            when { anyOf { branch 'main'; changeRequest() } }
             steps {
                 echo '========================================'
                 echo '  STAGE 2 : ENVIRONMENT SETUP'
@@ -66,6 +67,7 @@ pipeline {
         // No Spring, No DB, No Mocks
         // ----------------------------------------
         stage('Unit Tests') {
+            when { anyOf { branch 'main'; changeRequest() } }
             steps {
                 echo '========================================'
                 echo '  STAGE 3 : UNIT TESTS'
@@ -87,6 +89,7 @@ pipeline {
         // No Spring, No DB
         // ----------------------------------------
         stage('Mock Tests') {
+            when { anyOf { branch 'main'; changeRequest() } }
             steps {
                 echo '========================================'
                 echo '  STAGE 4 : MOCK TESTS'
@@ -108,6 +111,7 @@ pipeline {
         // No mocks, No DB, No Spring
         // ----------------------------------------
         stage('Integration Tests') {
+            when { anyOf { branch 'main'; changeRequest() } }
             steps {
                 echo '========================================'
                 echo '  STAGE 5 : INTEGRATION TESTS'
@@ -145,6 +149,7 @@ pipeline {
         // Output: target/calculator-1.0-SNAPSHOT.jar
         // ----------------------------------------
         stage('Build JAR') {
+            when { branch 'main' }
             steps {
                 echo '========================================'
                 echo '  STAGE 8 : BUILD JAR ARTIFACT'
@@ -169,6 +174,7 @@ pipeline {
         // Tags as: yourdockerhub/calculator-app:<build-number>
         // ----------------------------------------
         stage('Build Docker Image') {
+            when { branch 'main' }
             steps {
                 echo '========================================'
                 echo '  STAGE 9 : BUILD DOCKER IMAGE'
@@ -191,6 +197,7 @@ pipeline {
         // Requires: dockerhub-credentials in Jenkins
         // ----------------------------------------
         stage('Push to Docker Hub') {
+            when { branch 'main' }
             steps {
                 echo '========================================'
                 echo '  STAGE 10 : PUSH IMAGE TO DOCKER HUB'

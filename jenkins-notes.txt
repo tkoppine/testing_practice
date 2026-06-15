@@ -1,0 +1,319 @@
+================================================================
+                    JENKINS - COMPLETE NOTES
+================================================================
+
+
+----------------------------------------------------------------
+1. WHAT IS JENKINS
+----------------------------------------------------------------
+
+Jenkins is an open source automation server used to automate the
+process of building, testing, and deploying applications. It is
+the most widely used CI/CD (Continuous Integration / Continuous
+Delivery) tool in companies.
+
+CI means every code change is automatically tested and built.
+CD means every passing build is automatically deployed.
+
+
+----------------------------------------------------------------
+2. TWO WAYS TO WRITE A JENKINS PIPELINE
+----------------------------------------------------------------
+
+Option 1 - Groovy Script directly in Jenkins UI:
+    You write the pipeline logic inside the Jenkins job
+    configuration page itself. This is called a scripted pipeline.
+    It gives full flexibility but is harder to read and maintain.
+
+Option 2 - Jenkinsfile (Declarative Pipeline):
+    You write the pipeline in a file called Jenkinsfile and store
+    it inside your code repository alongside your source code.
+    This is the recommended and most commonly used approach in
+    companies. It starts with the keyword "pipeline" and follows
+    a structured, readable format.
+
+
+----------------------------------------------------------------
+3. STRUCTURE OF A JENKINSFILE
+----------------------------------------------------------------
+
+pipeline {
+
+    agent any
+        Tells Jenkins to run this pipeline on any available
+        machine (agent). In large companies, there are multiple
+        build servers (agents) and Jenkins picks one.
+
+    tools {
+        maven 'Maven-3.9'
+        jdk   'Java-17'
+    }
+        Specifies the tools required to run the pipeline.
+        Jenkins installs and configures them automatically.
+
+    environment {
+        APP_NAME     = 'calculator-app'
+        DOCKER_IMAGE = 'tkoppine/calculator-app'
+        DOCKER_TAG   = "${BUILD_NUMBER}"
+        DOCKER_CREDS = credentials('dockerhub-credentials')
+    }
+        Defines environment variables available to all stages.
+        BUILD_NUMBER is provided automatically by Jenkins and
+        increases by 1 for every build.
+        credentials() fetches secrets stored securely in Jenkins
+        so passwords are never hardcoded in the file.
+
+    options {
+        timestamps()
+        timeout(time: 20, unit: 'MINUTES')
+    }
+        Adds timestamps to every log line and sets a maximum
+        time limit so a stuck build does not run forever.
+
+    stages {
+        stage('Checkout') { ... }
+        stage('Unit Tests') { ... }
+        stage('Build JAR') { ... }
+        stage('Build Docker Image') { ... }
+        stage('Push to Docker Hub') { ... }
+    }
+        Each stage represents one step in your workflow. Stages
+        run one after another. If one stage fails, the following
+        stages are skipped by default.
+
+    steps {
+        sh 'mvn test'
+        echo 'Running unit tests'
+    }
+        steps is inside each stage. This is where the actual
+        commands are written. sh runs a shell command on the
+        build machine. echo prints a message to the console log.
+
+    post {
+        always  { ... }
+        success { ... }
+        failure { ... }
+    }
+        post runs after the stage or pipeline finishes regardless
+        of whether it passed or failed. It is used to print
+        status messages, clean up workspace, archive reports, and
+        notify teams.
+
+
+----------------------------------------------------------------
+4. JENKINS SETUP STEPS
+----------------------------------------------------------------
+
+Step 1 - Install Jenkins (via Docker or directly on a server)
+
+Step 2 - Install Required Plugins
+    Plugins add extra functionality to Jenkins. You install them
+    from Manage Jenkins > Plugins > Available Plugins.
+
+    Common plugins needed:
+        Pipeline          - runs Jenkinsfile
+        Git               - clones code from GitHub
+        Maven Integration - runs mvn commands
+        Docker Pipeline   - builds and pushes Docker images
+        Credentials Binding - uses secrets securely in pipeline
+
+    Note: The plugin "spring-boot-starter-test" in Maven is
+    similar in concept. It bundles multiple things together.
+    Likewise, installing Jenkins with "suggested plugins" gives
+    you Pipeline, Git, and Credentials automatically.
+
+Step 3 - Configure Tools
+    Go to Manage Jenkins > Tools and add:
+        JDK    - give it a name like Java-17, select version
+        Maven  - give it a name like Maven-3.9, select version
+        Git    - usually auto-detected
+
+    The name you give here must exactly match what you write
+    in the tools block of your Jenkinsfile.
+
+Step 4 - Add Credentials
+    Go to Manage Jenkins > Credentials > Global > Add Credentials
+    Store sensitive values like:
+        Docker Hub username and password
+        GitHub personal access token
+        SSH keys for servers
+        AWS access keys
+
+    Each credential gets an ID. You reference that ID in the
+    Jenkinsfile using credentials('your-id-here').
+
+
+----------------------------------------------------------------
+5. CREATING A PIPELINE JOB
+----------------------------------------------------------------
+
+Step 1 - New Item > Pipeline > Give it a name > Click OK
+
+Step 2 - General Section
+    Check "GitHub project" and enter your repository URL.
+    This links the job to your GitHub project page.
+
+Step 3 - Build Triggers
+    Check "GitHub hook trigger for GITScm polling" to
+    automatically start a build every time a new commit is
+    pushed to GitHub. This requires a webhook configured on
+    GitHub pointing to your Jenkins URL.
+
+    Other trigger options:
+        Poll SCM      - Jenkins checks GitHub on a schedule
+        Build periodically - runs on a fixed time schedule
+        Manually      - only when you click Build Now
+
+Step 4 - Pipeline Section
+    Definition: Pipeline script from SCM
+    SCM: Git
+    Repository URL: https://github.com/username/repo.git
+    Credentials: select the GitHub credentials you added
+    Branch: */main
+    Script Path: Jenkinsfile
+
+    "Pipeline script from SCM" means Jenkins reads the
+    Jenkinsfile from your repository instead of from the
+    Jenkins UI. This way your pipeline code is version
+    controlled along with your application code.
+
+Step 5 - Save and click Build Now to run the first build.
+
+
+----------------------------------------------------------------
+6. MULTIBRANCH PIPELINE - WHAT IT IS AND WHY IT IS USED
+----------------------------------------------------------------
+
+A standard pipeline job is tied to one branch, usually main.
+A multibranch pipeline automatically discovers all branches in
+your repository and creates a separate pipeline job for each one.
+
+How it works:
+    When a developer pushes code to any branch, only that
+    branch's pipeline is triggered. Each branch runs its own
+    independent build, test, and optionally deploy process.
+
+Why companies use it:
+
+    1. Feature branch testing
+       Developers work on feature branches like feature/login
+       or feature/payment. Each branch is tested automatically
+       before it is merged into main. This catches bugs early.
+
+    2. Isolation
+       A failing build on one branch does not affect other
+       branches. The main branch pipeline always reflects the
+       state of production-ready code.
+
+    3. Pull request validation
+       When a developer raises a pull request to merge their
+       branch into main, Jenkins automatically runs the
+       pipeline for that branch. If tests fail, the pull
+       request is blocked until the issue is fixed. This is
+       called a quality gate.
+
+    4. Parallel development
+       Multiple developers can work on different features at
+       the same time. Jenkins builds and tests each branch
+       independently without interfering with each other.
+
+    5. Branch-specific behavior
+       You can configure the Jenkinsfile to behave differently
+       per branch. For example, the main branch deploys to
+       production, the staging branch deploys to a staging
+       server, and feature branches only run tests without
+       deploying anywhere.
+
+
+----------------------------------------------------------------
+7. COMPLETE JENKINS WORKFLOW IN COMPANIES
+----------------------------------------------------------------
+
+Developer writes code on a feature branch
+    |
+    v
+Developer pushes code to GitHub
+    |
+    v
+GitHub webhook triggers Jenkins automatically
+    |
+    v
+Jenkins picks up the Jenkinsfile from the repository
+    |
+    v
+Stage 1 - Checkout
+    Jenkins clones the latest code from GitHub
+
+Stage 2 - Environment Setup
+    Jenkins verifies Java, Maven, Docker versions are correct
+
+Stage 3 - Unit Tests
+    Jenkins runs unit tests using JUnit and Mockito
+    Fast, no external dependencies
+
+Stage 4 - Integration Tests
+    Jenkins runs integration tests with real components
+
+Stage 5 - E2E Tests
+    Jenkins runs end to end tests using REST Assured,
+    Testcontainers, or Selenium
+
+Stage 6 - Build Artifact
+    Jenkins runs mvn package to produce a JAR file
+
+Stage 7 - Build Docker Image
+    Jenkins runs docker build to create a Docker image
+    tagged with the build number
+
+Stage 8 - Push to Registry
+    Jenkins pushes the image to Docker Hub or a private
+    registry like AWS ECR
+
+Stage 9 - Deploy
+    Jenkins SSHs into the server, pulls the new image,
+    stops the old container, and starts the new one
+
+Post Actions
+    Jenkins records test results, archives the JAR file,
+    sends a notification (email, Slack) with pass or fail
+    status, and cleans up the workspace
+
+
+----------------------------------------------------------------
+8. KEY TERMS SUMMARY
+----------------------------------------------------------------
+
+CI - Continuous Integration
+    Every commit triggers an automated build and test run.
+    Problems are caught immediately before they reach main.
+
+CD - Continuous Delivery or Continuous Deployment
+    Every passing build is packaged and ready to deploy.
+    In continuous deployment it is also deployed automatically.
+
+SCM - Source Code Manager
+    The version control system where your code lives.
+    In most companies this is Git hosted on GitHub, GitLab,
+    or Bitbucket.
+
+Agent - Build Server
+    The machine where Jenkins runs your pipeline commands.
+    In small setups it is the Jenkins server itself.
+    In large companies there are dedicated build agents.
+
+Artifact - Build Output
+    The file produced after building your code. For a Java
+    project this is a JAR or WAR file.
+
+Webhook - GitHub to Jenkins Trigger
+    A URL registered in GitHub that sends a notification to
+    Jenkins every time code is pushed. This is what makes
+    builds start automatically without manual intervention.
+
+Pipeline as Code
+    Storing the Jenkinsfile inside the code repository so
+    the pipeline definition is version controlled, reviewed,
+    and maintained just like application code.
+
+================================================================
+```
