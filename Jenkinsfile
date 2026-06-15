@@ -140,7 +140,14 @@ pipeline {
                 echo '  REST Assured    -> real HTTP calls'
                 echo '  DB assertions   -> verifies DB state'
                 echo '========================================'
-                sh 'mvn test -Dtest=CalculatorE2ETest 2>&1'
+                sh '''
+                    DOCKER_HOST=unix:///var/run/docker.sock \
+                    TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock \
+                    TESTCONTAINERS_RYUK_DISABLED=true \
+                    mvn test -Dtest=CalculatorE2ETest \
+                        -Dtestcontainers.reuse.enable=false \
+                        2>&1
+                '''
             }
             post {
                 always  { junit '**/target/surefire-reports/TEST-*CalculatorE2ETest*.xml' }
