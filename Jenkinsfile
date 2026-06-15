@@ -124,47 +124,28 @@ pipeline {
         }
 
         // ----------------------------------------
-        // STAGE 6 - REST ASSURED E2E TESTS
-        // Starts real embedded Tomcat via @SpringBootTest
+        // STAGE 6 - FULL E2E TESTS
+        // Testcontainers starts real PostgreSQL Docker container
+        // Spring Boot starts real embedded Tomcat server
         // REST Assured makes real HTTP calls to the API
+        // DB assertions verify data was saved correctly
         // ----------------------------------------
-        stage('REST Assured E2E Tests') {
+        stage('Full E2E Tests') {
             steps {
                 echo '========================================'
-                echo '  STAGE 6 : REST ASSURED E2E TESTS'
+                echo '  STAGE 6 : FULL E2E TESTS'
                 echo '  Class  : CalculatorE2ETest'
-                echo '  Spring Boot starts embedded Tomcat'
-                echo '  REST Assured makes real HTTP calls'
+                echo '  Testcontainers -> real PostgreSQL DB'
+                echo '  SpringBootTest  -> real Tomcat server'
+                echo '  REST Assured    -> real HTTP calls'
+                echo '  DB assertions   -> verifies DB state'
                 echo '========================================'
                 sh 'mvn test -Dtest=CalculatorE2ETest 2>&1'
             }
             post {
                 always  { junit '**/target/surefire-reports/TEST-*CalculatorE2ETest*.xml' }
-                success { echo 'REST Assured E2E tests PASSED.' }
-                failure { echo 'REST Assured E2E tests FAILED.' }
-            }
-        }
-
-        // ----------------------------------------
-        // STAGE 7 - TESTCONTAINERS DB TESTS
-        // Spins up real PostgreSQL Docker container
-        // Tests Service -> Repository -> DB flow
-        // Docker must be running on Jenkins agent
-        // ----------------------------------------
-        stage('Testcontainers DB Tests') {
-            steps {
-                echo '========================================'
-                echo '  STAGE 7 : TESTCONTAINERS DB TESTS'
-                echo '  Class  : CalculatorDBTest'
-                echo '  Pulls postgres:15 Docker image'
-                echo '  Tests real DB interaction'
-                echo '========================================'
-                sh 'mvn test -Dtest=CalculatorDBTest 2>&1'
-            }
-            post {
-                always  { junit '**/target/surefire-reports/TEST-*CalculatorDBTest*.xml' }
-                success { echo 'Testcontainers DB tests PASSED.' }
-                failure { echo 'Testcontainers DB tests FAILED.' }
+                success { echo 'Full E2E tests PASSED.' }
+                failure { echo 'Full E2E tests FAILED.' }
             }
         }
 
