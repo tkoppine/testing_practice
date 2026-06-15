@@ -316,4 +316,98 @@ Pipeline as Code
     and maintained just like application code.
 
 ================================================================
-```
+
+
+----------------------------------------------------------------
+9. BRANCH-BASED PIPELINE BEHAVIOUR
+----------------------------------------------------------------
+
+In a multibranch pipeline, you can control which stages run
+depending on whether the build was triggered by a push to main
+or by a pull request from a feature branch.
+
+This is done using the "when" block inside each stage.
+
+
+TWO CONDITIONS USED:
+
+    branch 'main'
+        True only when the branch being built is main.
+        Used for stages that should only run on production-ready
+        code: Build JAR, Build Docker Image, Push to Docker Hub.
+
+    changeRequest()
+        True when Jenkins is building a Pull Request.
+        Used for stages that validate feature branch code before
+        it is merged into main.
+
+    anyOf { branch 'main'; changeRequest() }
+        True when EITHER condition is true.
+        Used for test stages so they run both on main pushes
+        and on PR builds.
+
+
+WHAT RUNS WHERE:
+
+    Trigger                  Tests   Build JAR   Docker Push
+    ---------------------------------------------------------
+    Push to main             YES     YES         YES
+    PR from feature branch   YES     NO          NO
+    Direct push to feature   NO      NO          NO
+
+
+HOW TO WRITE IT IN THE JENKINSFILE:
+
+    Test stages (run on main AND PR):
+        stage('Unit Tests') {
+            when { anyOf { branch 'main'; changeRequest() } }
+            steps { ... }
+        }
+
+    Build/push stages (run only on main):
+        stage('Build Docker Image') {
+            when { branch 'main' }
+            steps { ... }
+        }
+
+
+WHAT HAPPENS ON A DIRECT FEATURE BRANCH PUSH:
+    The pipeline is still triggered by the webhook but every
+    stage except Checkout is skipped. Jenkins shows the build
+    as green with skipped stages. This saves CI time because
+    feature branch code is only validated when a PR is raised.
+
+
+JENKINS CONFIGURATION REQUIRED:
+    In Multibranch Pipeline > Configure > Branch Sources >
+    GitHub > Behaviours, make sure both of these are enabled:
+
+        Discover branches
+            So Jenkins tracks the main branch.
+
+        Discover pull requests from origin
+            So Jenkins detects PRs and changeRequest() works.
+
+    Without "Discover pull requests", the changeRequest()
+    condition will never be true and PR builds will not run.
+
+
+HOW TO TEST THIS SETUP:
+    1. Create a feature branch
+       git checkout -b feature/my-feature
+
+    2. Make a small change and push
+       git add . && git commit -m "small change"
+       git push -u origin feature/my-feature
+
+    3. Raise a PR on GitHub targeting main
+       gh pr create --title "my change" --body "testing"
+
+    4. Watch Jenkins - only test stages should run for the PR
+       Build JAR and Docker stages should be skipped
+
+    5. Merge the PR into main
+       Jenkins then runs the full pipeline on main including
+       Docker build and push to Docker Hub
+
+================================================================
